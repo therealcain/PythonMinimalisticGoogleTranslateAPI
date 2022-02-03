@@ -1,7 +1,13 @@
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import JavascriptException
+from selenium.webdriver.support import expected_conditions as EC
+
+import string
 
 class Translator:
 
@@ -124,21 +130,26 @@ class Translator:
     def __run_google_translate__(self, sentence, from_language, to_language):
         url = 'https://translate.google.com/?sl={0}&tl={1}&text={2}&op=translate'.format(from_language, to_language, sentence)
 
+        # Wait for the browser to be ready
+        self.browser.implicitly_wait(10)
+
         # Open up the URL
         self.browser.get(url)
-        self.browser.implicitly_wait(10)
 
     def translate(self, sentence, from_language = AUTO, to_language = ENGLISH):
         self.__run_google_translate__(sentence, from_language, to_language)
 
         response = None
         try:
-            # The class attribute 'dePhmb' is used to store the information about the translated text.
-            # It's the only class that is not changing, we must fetch the data from it.
-            response = self.browser.execute_script('return document.getElementsByClassName("dePhmb")[0].firstElementChild.firstElementChild.outerText')
-        
+            response = WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '/html/body/c-wiz/div/div[2]/c-wiz/div[2]/c-wiz/div[1]/div[2]/div[3]/c-wiz[2]/div[6]/div/div[1]/span[1]/span/span'))).text
+
+        except JavascriptException:
+            print('JavascriptException')
+
         except:
             print('Error')
+
+        # self.browser.close()
 
         # Convert the result to string.        
         if response != None:
@@ -149,18 +160,27 @@ class Translator:
     def detect_language(self, sentence):
         self.__run_google_translate__(sentence, 'auto', 'en')
 
+        response = None
         try:
-            # The class attribute 'ooArgc' is where the auto detection language changing the text, we just need
-            # to fetch that data.
-            response = self.browser.execute_script('return document.getElementsByClassName("ooArgc")[0].textContent')
+            response = WebDriverWait(self.browser, 5).until(EC.presence_of_element_located((By.XPATH, '/html/body/c-wiz/div/div[2]/c-wiz/div[2]/c-wiz/div[1]/div[1]/c-wiz/div[1]/c-wiz/div[2]/div/div[2]/div/div/span/button[1]/span[1]/span'))).text
 
-            # The response will store something like 'English - detected', we want to get only the language.
-            response = response.replace('- detected', '')
+            # The response will store something like 'ENGLISH - DETECTED', we want to get only the language.
+            response = response.split('-')[0]
+            response = response[0: -1] 
+
+            # Only first character uppercased.
+            response = string.capwords(response)
+
+        except JavascriptException:
+            print('JavascriptException')
 
         except:
             print('Error')
+
+        # self.browser.close()
 
         if response != None:
             return str(response)
 
         return None
+    
